@@ -1,4 +1,4 @@
-ac-fte
-======
+AC-FTE: Adaptive Collective Fault Tolerance Engine
+==================================================
 
-Adaptive Collective Fault Tolerance Engine
+
