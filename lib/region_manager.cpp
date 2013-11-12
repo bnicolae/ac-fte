@@ -146,11 +146,8 @@ bool region_manager::handle_segfault(void *addr) {
 	}
     }
 
-    if (incremental_flag || access_type != PAGE_WAIT)
+    if (incremental_flag || access_type == PAGE_COW)
 	mprotect(buff, page_size, PROT_READ | PROT_WRITE);
-/*
-    std::clog << "touched_size = " << new_touched.size() << ", ptr = " 
-    << (unsigned long)buff << ", access_type = " << (int)access_type << std::endl;*/
     new_touched.push_back(touched_entry_t(buff, access_type));    
 
     return true;
@@ -188,28 +185,28 @@ bool region_manager::checkpoint() {
 	dup_engine->finalize_local();
 	if (global_dedup_flag)
 	    dup_engine->global_dedup();
-	// optionally display some stats:
 
+	// optionally display some stats:
 	std::string dup_stats = dup_engine->get_stats();
 	if (dup_stats != "")
 	    DBG("DEDUP statistics: " << dup_stats);
     }
 
-    // protect all memory regions
-    for (page_map_t::iterator p_it = pages.begin(); p_it != pages.end(); p_it++)
-	mprotect(p_it->first, page_size, PROT_READ);
-
     // schedule pages for eviction
-    if (incremental_flag)
+    if (incremental_flag) {
+	for (page_map_t::iterator p_it = pages.begin(); p_it != pages.end(); p_it++)
+	    mprotect(p_it->first, page_size, PROT_READ);
 	for (touched_t::iterator t_it = touched.begin(); t_it != touched.end(); t_it++) {
 	    page_map_t::iterator p_it = pages.find(t_it->first);
 	    if (p_it != pages.end() && (!dedup_flag || dup_engine->check_page(p_it->first)))
 		p_it->second.state = PAGE_SCHEDULED;
 	}
-    else
+    } else
 	for (page_map_t::iterator p_it = pages.begin(); p_it != pages.end(); p_it++)
-	    if (!dedup_flag || dup_engine->check_page(p_it->first))
+	    if (!dedup_flag || dup_engine->check_page(p_it->first)) {
+		mprotect(p_it->first, page_size, PROT_READ);
 		p_it->second.state = PAGE_SCHEDULED;
+	    }
 
     // signal the io thread to begin processing
     no_blocks = 0;
@@ -278,7 +275,7 @@ void region_manager::handle_page(char *addr, int fd) {
     if (buff != addr)
 	simple_sweep_allocator::free(buff);
     else if (!incremental_flag)
-	mprotect(buff, page_size, PROT_READ | PROT_WRITE);
+	mprotect(buff, page_size, PROT_READ | PROT_WRITE);    
     no_blocks++;
 }
 

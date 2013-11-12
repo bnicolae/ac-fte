@@ -40,7 +40,7 @@ public:
     unsigned int count;
     unsigned int rank;
 
-    page_hashes_entry_t(char *buff, unsigned int r) : count(1) {
+    page_hashes_entry_t(char *buff, unsigned int r) : count(1), rank(r) {
 	HASH_FCN((unsigned char *)buff, simple_sweep_allocator::get_page_size(), (unsigned char *)hash);
 	page_ptr = buff;
     }
@@ -102,7 +102,8 @@ public:
 	x.clear();
 	for (ordered_hashes_t::iterator i = uncut_result.begin(); i != uncut_result.end() && x.size() < THRESHOLD; ++i)
 	    x.insert(*i);
-	return x;    }
+	return x;    
+    }
 };
 
 class stats_merger_t : public std::binary_function <stats_t, stats_t, stats_t> {
