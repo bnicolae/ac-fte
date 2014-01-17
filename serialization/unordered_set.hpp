@@ -18,27 +18,27 @@ namespace serialization {
 template<class Archive, class Key, class HashFcn, class Equal, class Allocator >
 inline void save(
     Archive & ar,
-    const std::tr1::unordered_set<Key, HashFcn, Equal, Allocator> &t,
+    const std::unordered_set<Key, HashFcn, Equal, Allocator> &t,
     const unsigned int /* file_version */
 ){
     boost::serialization::stl::save_collection<
-        Archive, std::tr1::unordered_set<Key, HashFcn, Equal, Allocator> 
+        Archive, std::unordered_set<Key, HashFcn, Equal, Allocator> 
     >(ar, t);
 }
 
 template<class Archive, class Key, class HashFcn, class Equal, class Allocator >
 inline void load(
     Archive & ar,
-    std::tr1::unordered_set<Key, HashFcn, Equal, Allocator> &t,
+    std::unordered_set<Key, HashFcn, Equal, Allocator> &t,
     const unsigned int /* file_version */
 ){
     boost::serialization::stl::load_collection<
         Archive,
-        std::tr1::unordered_set<Key, HashFcn, Equal, Allocator>,
+        std::unordered_set<Key, HashFcn, Equal, Allocator>,
         boost::serialization::stl::archive_input_set<
-            Archive, std::tr1::unordered_set<Key, HashFcn, Equal, Allocator> 
+            Archive, std::unordered_set<Key, HashFcn, Equal, Allocator> 
         >,
-        boost::serialization::stl::no_reserve_imp<std::tr1::unordered_set<
+        boost::serialization::stl::no_reserve_imp<std::unordered_set<
             Key, HashFcn, Equal, Allocator> 
         >
     >(ar, t);
@@ -49,7 +49,7 @@ inline void load(
 template<class Archive, class Key, class HashFcn, class Equal, class Allocator >
 inline void serialize(
     Archive & ar,
-    std::tr1::unordered_set<Key, HashFcn, Equal, Allocator> & t,
+    std::unordered_set<Key, HashFcn, Equal, Allocator> & t,
     const unsigned int file_version
 ){
     boost::serialization::split_free(ar, t, file_version);
@@ -60,6 +60,6 @@ inline void serialize(
 
 #include <boost/serialization/collection_traits.hpp>
 
-BOOST_SERIALIZATION_COLLECTION_TRAITS(std::tr1::unordered_set)
+BOOST_SERIALIZATION_COLLECTION_TRAITS(std::unordered_set)
 
 #endif // BOOST_SERIALIZATION_UNORDERED_SET_HPP

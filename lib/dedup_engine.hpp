@@ -18,7 +18,7 @@
 #ifndef __DEDUP_ENGINE
 #define __DEDUP_ENGINE
 
-#include <tr1/unordered_set>
+#include <unordered_set>
 
 #include <boost/unordered_map.hpp>
 #include <boost/functional/hash.hpp>
@@ -27,11 +27,12 @@
 
 #include "cow_allocator.hpp"
 
+typedef std::list<unsigned int, boost::fast_pool_allocator<unsigned int, no_reclaim_allocator> > rank_list_t;
 class page_hashes_entry_t;
-typedef std::tr1::unordered_set<page_hashes_entry_t,
-				boost::hash<page_hashes_entry_t>, std::equal_to<page_hashes_entry_t>,
-				boost::fast_pool_allocator<page_hashes_entry_t, no_reclaim_allocator>
-				> page_hashes_t;
+typedef std::unordered_set<page_hashes_entry_t,
+			   boost::hash<page_hashes_entry_t>, std::equal_to<page_hashes_entry_t>,
+			   boost::fast_pool_allocator<page_hashes_entry_t, no_reclaim_allocator>
+			   > page_hashes_t;
 
 class stats_t {
 public:
@@ -46,21 +47,24 @@ private:
 };
 
 class dedup_engine {    
-private:
-    typedef std::pair<char *, bool> page_ptr_map_entry_t;
-    typedef boost::unordered_map<char *, bool,
+public:
+    typedef std::pair<char *, rank_list_t *> page_ptr_map_entry_t;
+    typedef boost::unordered_map<char *, rank_list_t *,
 				 boost::hash<char *>, std::equal_to<char *>,
 				 boost::fast_pool_allocator<page_ptr_map_entry_t, no_reclaim_allocator>
-			       > page_ptr_map_t;
-			      
+				 > page_ptr_map_t;
+
+private:
     page_hashes_t page_hashes;
     page_ptr_map_t page_ptr_map;
 
     stats_t stats;
     boost::mpi::communicator *mpi_comm_world;
+    unsigned int rep;
+    std::vector<unsigned int> load;
    
 public:
-    dedup_engine(boost::mpi::communicator *comm);
+    dedup_engine(boost::mpi::communicator *comm, unsigned int rep);
     ~dedup_engine();
     void process_page(char *buff);
     bool check_page(char *buff);
@@ -69,6 +73,8 @@ public:
 
     void finalize_local();
     std::string get_stats();
+    std::vector<unsigned int> &get_load_info();
+    page_ptr_map_t *get_page_info();
 };
 
 #endif

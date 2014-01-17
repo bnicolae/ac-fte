@@ -9,7 +9,7 @@ set(EXTERNAL_ROOT ${HOME}/deploy)
 
 # some global compiler flags
 add_definitions(-O2 -Wall -D__BENCHMARK -D__ASSERT -D__INFO)
-set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-std=c++0x")
+set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-std=c++11")
 
 # set the path to the cmake modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")

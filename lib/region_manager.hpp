@@ -29,6 +29,7 @@
 
 #include "cow_allocator.hpp"
 #include "dedup_engine.hpp"
+#include "repl_engine.hpp"
 
 class region_manager {
 public:
@@ -47,7 +48,8 @@ private:
     std::string ckpt_path_prefix;
     boost::uint64_t cow_threshold;
     bool incremental_flag, access_order_flag, dedup_flag, global_dedup_flag;
-    
+    unsigned int rep;
+
     touched_t touched, new_touched;
     
     struct page_info_t {
@@ -77,15 +79,17 @@ private:
     boost::mpi::environment mpi_env;
     boost::mpi::communicator mpi_comm_world;
     dedup_engine *dup_engine;
+    repl_engine *rep_engine;
     std::ofstream ckpt_log_file;
 
     void async_io_exec();
     std::string construct_stats();
-    void handle_page(char *addr, int fd);
+    void handle_page(char *addr);
     
 public:
     region_manager(boost::uint64_t page_size, std::string &ckpt_path_prefix, std::string &ckpt_log_prefix,
-		   boost::uint64_t cow_mem, bool inc_flag, bool aorder_flag, bool dup_flag, bool global_dup_flag);
+		   boost::uint64_t cow_mem, bool inc_flag, bool aorder_flag, bool dup_flag, bool global_dup_flag, 
+		   unsigned int r);
     ~region_manager();
 
     bool add_region(const void *buff, boost::uint64_t size);

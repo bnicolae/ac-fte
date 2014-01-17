@@ -3,6 +3,7 @@ add_library (ac_fte SHARED
     region_manager.cpp 
     cow_allocator.cpp
     dedup_engine.cpp
+    repl_engine.cpp
     syscall_overrides.c
 )
 

@@ -28,8 +28,7 @@ extern "C" {
 
 // Memory region manager
 static region_manager *m = NULL;
-
-static boost::mutex alloc_lock;
+static boost::mpi::environment *env;
 
 static struct sigaction old_handler;
 
@@ -47,7 +46,7 @@ void __attribute__ ((destructor)) blobcr_destructor() {
 
 extern "C" void start_checkpointer() {
     std::string ckpt_path_prefix, ckpt_log_prefix;
-    unsigned cow_size; 
+    unsigned cow_size, rep; 
     bool iflag, aflag, dflag, gdflag;
 
     char *str = getenv("CKPT_PATH_PREFIX");
@@ -78,15 +77,22 @@ extern "C" void start_checkpointer() {
     str = getenv("GLOBAL_DEDUP_FLAG");
     gdflag = (str != NULL && strcasecmp(str, "true") == 0);
 
+    str = getenv("REPLICATION_FACTOR");
+    if (str == NULL || sscanf(str, "%u", &rep) != 1 || rep < 1)
+	rep = 0;
+    
+    int argc = 0;
+    char **argv = NULL;
+    env = new boost::mpi::environment(argc, argv);
     m = new region_manager(getpagesize(), ckpt_path_prefix, ckpt_log_prefix,
-			   (boost::uint64_t)1 << cow_size, iflag, aflag, dflag, gdflag);
+			   (boost::uint64_t)1 << cow_size, iflag, aflag, dflag, gdflag, rep);
 
     struct sigaction sa;
     sa.sa_flags = SA_SIGINFO | SA_RESTART;
     sigemptyset(&sa.sa_mask);
     sa.sa_sigaction = handler;
     if (sigaction(SIGSEGV, &sa, &old_handler) == -1) {
-	perror("BlobCR sigaction failure");
+	perror("AC-FTE sigaction failure");
 	delete m;
     } else
 	INFO("INIT: ckpt_path_prefix = " << ckpt_path_prefix 
@@ -94,7 +100,8 @@ extern "C" void start_checkpointer() {
 	     << ", iflag = " << iflag
 	     << ", aflag = " << aflag
 	     << ", dflag = " << dflag
-	     << ", gdflag = " << gdflag);
+	     << ", gdflag = " << gdflag
+	     << ", rep = " << rep);
 }
 
 extern "C" void *add_region(void *addr, size_t size) {
@@ -153,4 +160,6 @@ extern "C" void terminate_checkpointer() {
 	delete m;
 	m = NULL;
     }
+    if (env)
+	delete env;
 }

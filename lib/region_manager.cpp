@@ -21,7 +21,6 @@
 #include <algorithm>
 
 extern "C" {
-#include <fcntl.h>
 #include <sys/mman.h>
 }
 
@@ -32,15 +31,16 @@ extern "C" {
 
 region_manager::region_manager(boost::uint64_t ps, std::string &cp, std::string &cl,
 			       boost::uint64_t extra_mem, bool iflag, 
-			       bool aflag, bool dflag, bool gdflag) :
+			       bool aflag, bool dflag, bool gdflag, unsigned int r) :
     page_size(ps), ckpt_path_prefix(cp), cow_threshold(extra_mem / page_size),
     incremental_flag(iflag), access_order_flag(aflag), dedup_flag(dflag),
-    global_dedup_flag(gdflag), total_mem_size(0), no_blocks(0), seq_no(0),
+    global_dedup_flag(gdflag), rep(r), total_mem_size(0), no_blocks(0), seq_no(0),
     stats_page_cow(0), stats_page_wait(0), stats_page_after(0), stats_page_delayed(0),
     checkpoint_in_progress(false), async_io_thread(boost::bind(&region_manager::async_io_exec, this))  {    
     no_reclaim_allocator::init(NO_RECLAIM_SIZE);
     simple_sweep_allocator::init(page_size, extra_mem);
-    dup_engine = new dedup_engine(&mpi_comm_world);
+    dup_engine = new dedup_engine(&mpi_comm_world, rep);
+    rep_engine = new repl_engine(&mpi_comm_world, rep, ps);
     if (cl != "") {
 	std::ostringstream ss;
 	ss << cl << "/ckpt_messages-rank_" << mpi_comm_world.rank() << ".log";
@@ -63,6 +63,7 @@ region_manager::~region_manager() {
 	mprotect(p_it->first, page_size, PROT_READ | PROT_WRITE);
 	pages.erase(p_it);
     }
+    delete rep_engine;
     delete dup_engine;
     no_reclaim_allocator::destroy();
     simple_sweep_allocator::destroy();
@@ -178,7 +179,7 @@ bool region_manager::checkpoint() {
 		page_map_t::iterator p_it = pages.find(t_it->first);
 		if (p_it != pages.end())
 		    dup_engine->process_page(p_it->first);
-	    }
+	    } 
 	else
 	    for (page_map_t::iterator p_it = pages.begin(); p_it != pages.end(); p_it++)
 		dup_engine->process_page(p_it->first);
@@ -239,7 +240,7 @@ void region_manager::display_stats() {
     INFO("STATS SINCE LAST CKPT - " << construct_stats());
 }
 
-void region_manager::handle_page(char *addr, int fd) {
+void region_manager::handle_page(char *addr) {
     char *buff;
     page_map_t::iterator p_it;
 
@@ -255,17 +256,7 @@ void region_manager::handle_page(char *addr, int fd) {
 	else
 	    buff = addr;
     }
-    ssize_t result; size_t progress = 0;
-    while (progress < page_size) {
-	result = write(fd, buff + progress, page_size - progress);
-	if (result == -1) {
-	    char msg[1024];
-	    sprintf(msg, "handle page %p", addr);
-	    perror(msg);
-	}
-	ASSERT(result != -1);
-	progress += result;
-    }
+    rep_engine->write_page(addr, buff);
     {
 	boost::mutex::scoped_lock lock(page_lock);
 	p_it->second.state = PAGE_COMMITTED;
@@ -275,7 +266,7 @@ void region_manager::handle_page(char *addr, int fd) {
     if (buff != addr)
 	simple_sweep_allocator::free(buff);
     else if (!incremental_flag)
-	mprotect(buff, page_size, PROT_READ | PROT_WRITE);    
+	mprotect(buff, page_size, PROT_READ | PROT_WRITE);
     no_blocks++;
 }
 
@@ -294,10 +285,6 @@ static bool order_comparator(const region_manager::touched_entry_t &e1,
 }
 
 void region_manager::async_io_exec() {
-    std::stringstream ss;
-    std::string local_name;
-    int fd;
-
     while (1) {
 	{
 	    // wait for checkpoiniting signal
@@ -314,25 +301,23 @@ void region_manager::async_io_exec() {
 	}
 		    
 	// now write the checkpointing data
-	ss.str("");
-	ss << ckpt_path_prefix << "/blobcr-ckpt-" << mpi_comm_world.rank() << "-" << seq_no << ".dat";
-	local_name = ss.str();
-
-	fd = open(local_name.c_str(), O_RDWR | O_TRUNC | O_CREAT, 0666);
-	ASSERT(fd != -1);
+	if (dedup_flag)
+	    rep_engine->init(dup_engine->get_page_info(), dup_engine->get_load_info(), ckpt_path_prefix, seq_no);
+	else
+	    rep_engine->init(incremental_flag ? touched.size() : pages.size(), ckpt_path_prefix, seq_no);
 
 	if (incremental_flag || access_order_flag)
 	    for (int i = touched.size() - 1; i >= 0; i--) {
 		boost::this_thread::interruption_point();
-		handle_page(touched[i].first, fd);
+		handle_page(touched[i].first);
 	    }
 	if (!incremental_flag)
 	    for (page_map_t::iterator p_it = pages.begin(); p_it != pages.end(); p_it++) {
 		boost::this_thread::interruption_point();
-		handle_page(p_it->first, fd);
+		handle_page(p_it->first);
 	    }
 		
-	close(fd);
+	rep_engine->finalize();
 	INFO("CHECKPOINT COMPLETE - " << construct_stats());
 	seq_no++;
 	checkpoint_in_progress = false;
