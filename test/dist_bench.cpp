@@ -5,7 +5,7 @@
 #define __DEBUG
 #include "common/debug.hpp"
 
-void timer(const char *bench_type, boost::mpi::communicator &comm) {
+void bench_timer(const char *bench_type, boost::mpi::communicator &comm) {
     comm.barrier();
     if (comm.rank() == 0)
 	std::cout << "Starting test " << bench_type << std::endl;
@@ -48,18 +48,18 @@ int main(int argc, char *argv[]) {
     // same everywhere
     for (unsigned int i = 0; i < size / page_size; i++)
 	memset(buff + i * page_size, 0xFF, page_size);
-    timer("SAME EVERYWHERE", comm);
+    bench_timer("SAME EVERYWHERE", comm);
 
 
     // different locally, same everywhere
     for (unsigned int i = 0; i < size / page_size; i++)
 	*((unsigned int *)(buff + i * page_size)) = i;
-    timer("DIFF LOCALLY, SAME EVERYWHERE", comm);
+    bench_timer("DIFF LOCALLY, SAME EVERYWHERE", comm);
 
     // different everywhere
     for (unsigned int i = 0; i < size / page_size; i++)
 	*((unsigned int *)(buff + i * page_size + sizeof(unsigned int))) = comm.rank();
-    timer("DIFF EVERYWHERE", comm);
+    bench_timer("DIFF EVERYWHERE", comm);
     
     free_protected(buff, size);
     terminate_checkpointer();

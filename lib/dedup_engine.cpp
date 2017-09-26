@@ -22,8 +22,8 @@
 #include <list>
 
 #include <openssl/sha.h>
-#include "serialization/unordered_set.hpp"
 #include <boost/serialization/list.hpp>
+#include <boost/serialization/boost_unordered_set.hpp>
 #include <boost/bind.hpp>
 
 #define __DEBUG
@@ -68,7 +68,6 @@ private:
 	ar & ranks;
     }
 };
-
 
 class hash_merger_t : public std::binary_function <page_hashes_t, page_hashes_t, page_hashes_t> {
 private:    

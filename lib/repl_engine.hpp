@@ -27,7 +27,7 @@
 
 class repl_engine {
 private:
-    typedef std::vector<boost::mpi::request, boost::fast_pool_allocator<boost::mpi::request, no_reclaim_allocator> > vrequest_t;
+//    typedef std::vector<boost::mpi::request, boost::fast_pool_allocator<boost::mpi::request, no_reclaim_allocator> > vrequest_t;
     
     static const unsigned int RANK_DISTANCE = 1, REPL_TAG=0x0FFFAAAA;
 
@@ -36,12 +36,16 @@ private:
     unsigned int rep;
     size_t recv_size, page_size;
     std::vector<std::vector<unsigned int> > load_info;
-    std::vector<unsigned int> neighbors;
-    vrequest_t requests;
+    std::vector<unsigned int> send_neighbors, recv_neighbors, send_sum, shuffle_index;
+    std::vector<size_t> offsets;
+//    vrequest_t requests;
     int fd, fr;
     char *fr_addr;
+    MPI_Win win;
 
     size_t compute_neighbors();
+    unsigned int shuffle_ranks();
+    bool compare_traffic(unsigned int i, unsigned int j);
     void add_send_request(char *addr, char *buff);
 
 public:

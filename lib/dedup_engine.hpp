@@ -18,9 +18,8 @@
 #ifndef __DEDUP_ENGINE
 #define __DEDUP_ENGINE
 
-#include <unordered_set>
-
 #include <boost/unordered_map.hpp>
+#include <boost/unordered_set.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/pool/pool_alloc.hpp>
 #include <boost/mpi.hpp>
@@ -29,7 +28,7 @@
 
 typedef std::list<unsigned int, boost::fast_pool_allocator<unsigned int, no_reclaim_allocator> > rank_list_t;
 class page_hashes_entry_t;
-typedef std::unordered_set<page_hashes_entry_t,
+typedef boost::unordered_set<page_hashes_entry_t,
 			   boost::hash<page_hashes_entry_t>, std::equal_to<page_hashes_entry_t>,
 			   boost::fast_pool_allocator<page_hashes_entry_t, no_reclaim_allocator>
 			   > page_hashes_t;
