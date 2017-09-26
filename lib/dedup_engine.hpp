@@ -18,8 +18,7 @@
 #ifndef __DEDUP_ENGINE
 #define __DEDUP_ENGINE
 
-#include <tr1/unordered_set>
-
+#include <boost/unordered_set.hpp>
 #include <boost/unordered_map.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/pool/pool_alloc.hpp>
@@ -28,10 +27,10 @@
 #include "cow_allocator.hpp"
 
 class page_hashes_entry_t;
-typedef std::tr1::unordered_set<page_hashes_entry_t,
-				boost::hash<page_hashes_entry_t>, std::equal_to<page_hashes_entry_t>,
-				boost::fast_pool_allocator<page_hashes_entry_t, no_reclaim_allocator>
-				> page_hashes_t;
+typedef boost::unordered_set<page_hashes_entry_t,
+			     boost::hash<page_hashes_entry_t>, std::equal_to<page_hashes_entry_t>,
+			     boost::fast_pool_allocator<page_hashes_entry_t, no_reclaim_allocator>
+			     > page_hashes_t;
 
 class stats_t {
 public:

@@ -22,7 +22,7 @@
 #include <vector>
 
 #include <openssl/sha.h>
-#include "serialization/unordered_set.hpp"
+#include <boost/serialization/boost_unordered_set.hpp>
 
 #define __DEBUG
 #include "common/debug.hpp"
@@ -102,7 +102,7 @@ public:
 	x.clear();
 	for (ordered_hashes_t::iterator i = uncut_result.begin(); i != uncut_result.end() && x.size() < THRESHOLD; ++i)
 	    x.insert(*i);
-	return x;    
+	return x;
     }
 };
 
